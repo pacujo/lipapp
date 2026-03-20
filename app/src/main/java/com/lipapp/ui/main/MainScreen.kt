@@ -123,7 +123,8 @@ fun MainScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(padding),
+                    .padding(padding)
+                    .imePadding(),
             ) {
                 if (showSearch && state.currentTarget != null) {
                     SearchBar(
