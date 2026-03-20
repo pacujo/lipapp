@@ -110,6 +110,7 @@ private fun DateSeparator(date: String) {
 @Composable
 private fun MessageRow(message: Message, myNick: String?, darkMode: Boolean) {
     val uriHandler = LocalUriHandler.current
+    val textColor = MaterialTheme.colorScheme.onSurface
     val timestamp = formatTime(message.time)
     val linkColor = if (darkMode) IrcBlueDark else IrcBlue
     val mentionBg = if (darkMode) MentionDark else MentionLight
@@ -120,6 +121,7 @@ private fun MessageRow(message: Message, myNick: String?, darkMode: Boolean) {
 
     ClickableText(
         text = annotated,
+        style = MaterialTheme.typography.bodyMedium.copy(color = textColor),
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 1.dp),
