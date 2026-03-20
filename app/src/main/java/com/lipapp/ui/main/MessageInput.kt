@@ -16,7 +16,6 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import com.lipapp.util.IRC_BOLD
 import com.lipapp.util.IRC_ITALIC
-import com.lipapp.util.IRC_RESET
 import com.lipapp.util.IRC_UNDERLINE
 
 @Composable
@@ -55,12 +54,6 @@ fun MessageInput(
                 FormattingButton("B", "Bold") { wrapSelection(IRC_BOLD) }
                 FormattingButton("I", "Italic") { wrapSelection(IRC_ITALIC) }
                 FormattingButton("U", "Underline") { wrapSelection(IRC_UNDERLINE) }
-                FormattingButton("R", "Reset") {
-                    val sel = textField.selection
-                    val t = textField.text
-                    val new = t.substring(0, sel.start) + IRC_RESET + t.substring(sel.start)
-                    textField = TextFieldValue(new, TextRange(sel.start + 1))
-                }
             }
 
             Row(
