@@ -2,7 +2,6 @@ package com.lipapp.ui.main
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -15,7 +14,6 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
-    onLogout: () -> Unit,
     viewModel: MainViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -97,12 +95,6 @@ fun MainScreen(
                                 else Icons.Default.DarkMode,
                                 contentDescription = "Toggle dark mode",
                             )
-                        }
-                        IconButton(onClick = {
-                            viewModel.logout()
-                            onLogout()
-                        }) {
-                            Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = "Logout")
                         }
                     },
                 )

@@ -22,13 +22,7 @@ fun LipAppNavigation() {
             )
         }
         composable("main") {
-            MainScreen(
-                onLogout = {
-                    navController.navigate("login") {
-                        popUpTo("main") { inclusive = true }
-                    }
-                }
-            )
+            MainScreen()
         }
     }
 }
