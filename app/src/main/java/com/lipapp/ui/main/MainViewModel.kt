@@ -112,7 +112,7 @@ class MainViewModel @Inject constructor(
                 _state.update {
                     it.copy(
                         messages = page.messages,
-                        hasMoreMessages = page.more,
+                        hasMoreMessages = page.hasMore,
                         isLoadingMessages = false,
                     )
                 }
@@ -145,7 +145,7 @@ class MainViewModel @Inject constructor(
                 _state.update {
                     it.copy(
                         messages = page.messages + it.messages,
-                        hasMoreMessages = page.more,
+                        hasMoreMessages = page.hasMore,
                         isLoadingMore = false,
                     )
                 }

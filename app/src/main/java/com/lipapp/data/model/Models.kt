@@ -60,7 +60,7 @@ data class Message(
 @Serializable
 data class MessagePage(
     val messages: List<Message>,
-    val more: Boolean = false,
+    @SerialName("has_more") val hasMore: Boolean = false,
 )
 
 @Serializable

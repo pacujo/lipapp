@@ -4,15 +4,18 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.text.ClickableText
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
@@ -46,16 +49,30 @@ fun MessageList(
     onLoadMore: () -> Unit,
 ) {
     val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
 
-    LaunchedEffect(messages.size) {
-        if (messages.isNotEmpty()) {
-            listState.animateScrollToItem(messages.size - 1)
+    val isAtBottom by remember {
+        derivedStateOf {
+            val info = listState.layoutInfo
+            val lastVisible = info.visibleItemsInfo.lastOrNull()?.index ?: -1
+            lastVisible >= info.totalItemsCount - 2
+        }
+    }
+
+    var lastSeenId by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(messages.lastOrNull()?.id) {
+        val newId = messages.lastOrNull()?.id
+        if (newId != null && newId != lastSeenId) {
+            if (lastSeenId == null || isAtBottom) {
+                listState.animateScrollToItem(messages.size - 1)
+            }
+            lastSeenId = newId
         }
     }
 
     val imeBottom = WindowInsets.ime.getBottom(LocalDensity.current)
     LaunchedEffect(imeBottom) {
-        if (imeBottom > 0 && messages.isNotEmpty()) {
+        if (imeBottom > 0 && messages.isNotEmpty() && isAtBottom) {
             listState.animateScrollToItem(messages.size - 1)
         }
     }
@@ -74,27 +91,44 @@ fun MessageList(
         return
     }
 
-    LazyColumn(
-        state = listState,
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-    ) {
-        if (isLoadingMore) {
-            item {
-                Box(modifier = Modifier.fillMaxWidth().padding(8.dp), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+    Box(modifier = Modifier.fillMaxSize()) {
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+        ) {
+            if (isLoadingMore) {
+                item(key = "_loading") {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().padding(8.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                    }
                 }
+            }
+
+            var lastDate: String? = null
+            items(messages, key = { it.id }) { message ->
+                val msgDate = parseDate(message.time)
+                if (msgDate != null && msgDate != lastDate) {
+                    lastDate = msgDate
+                    DateSeparator(msgDate)
+                }
+                MessageRow(message = message, myNick = myNick, darkMode = darkMode)
             }
         }
 
-        var lastDate: String? = null
-        items(messages, key = { it.id }) { message ->
-            val msgDate = parseDate(message.time)
-            if (msgDate != null && msgDate != lastDate) {
-                lastDate = msgDate
-                DateSeparator(msgDate)
+        if (!isAtBottom && messages.size > 5) {
+            SmallFloatingActionButton(
+                onClick = { scope.launch { listState.animateScrollToItem(messages.size - 1) } },
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(16.dp),
+                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+            ) {
+                Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Jump to latest")
             }
-            MessageRow(message = message, myNick = myNick, darkMode = darkMode)
         }
     }
 }
@@ -117,7 +151,6 @@ private fun DateSeparator(date: String) {
 
 @Composable
 private fun MessageRow(message: Message, myNick: String?, darkMode: Boolean) {
-    val uriHandler = LocalUriHandler.current
     val textColor = MaterialTheme.colorScheme.onSurface
     val timestamp = formatTime(message.time)
     val linkColor = if (darkMode) IrcBlueDark else IrcBlue
@@ -127,16 +160,12 @@ private fun MessageRow(message: Message, myNick: String?, darkMode: Boolean) {
         buildMessageText(message, timestamp, myNick, linkColor, mentionBg)
     }
 
-    ClickableText(
+    Text(
         text = annotated,
         style = MaterialTheme.typography.bodyMedium.copy(color = textColor),
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 1.dp),
-        onClick = { offset ->
-            annotated.getStringAnnotations("URL", offset, offset)
-                .firstOrNull()?.let { uriHandler.openUri(it.item) }
-        },
     )
 }
 
@@ -203,10 +232,11 @@ private fun AnnotatedString.Builder.appendFormatted(
             if (pos < url.range.first) {
                 appendSegment(parsed, pos, url.range.first, myNick, mentionBg)
             }
-            pushStringAnnotation("URL", url.value)
-            withStyle(SpanStyle(color = linkColor, textDecoration = TextDecoration.Underline)) {
-                append(url.value)
-            }
+            pushLink(LinkAnnotation.Url(
+                url.value,
+                TextLinkStyles(style = SpanStyle(color = linkColor, textDecoration = TextDecoration.Underline)),
+            ))
+            append(url.value)
             pop()
             pos = url.range.last + 1
             continue
