@@ -63,14 +63,12 @@ fun MessageList(
                 }
                 add(ListItem.Msg(msg))
             }
-        }
+        }.asReversed()
     }
 
     val isAtBottom by remember {
         derivedStateOf {
-            val info = listState.layoutInfo
-            val lastVisible = info.visibleItemsInfo.lastOrNull()?.index ?: -1
-            lastVisible >= info.totalItemsCount - 2
+            listState.firstVisibleItemIndex <= 1
         }
     }
 
@@ -79,7 +77,7 @@ fun MessageList(
         val newId = messages.lastOrNull()?.id
         if (newId != null && newId != lastSeenId && listItems.isNotEmpty()) {
             if (lastSeenId == null || isAtBottom) {
-                listState.animateScrollToItem(listItems.size - 1)
+                listState.animateScrollToItem(0)
             }
             lastSeenId = newId
         }
@@ -88,13 +86,17 @@ fun MessageList(
     val imeBottom = WindowInsets.ime.getBottom(LocalDensity.current)
     LaunchedEffect(imeBottom) {
         if (imeBottom > 0 && listItems.isNotEmpty() && isAtBottom) {
-            listState.animateScrollToItem(listItems.size - 1)
+            listState.animateScrollToItem(0)
         }
     }
 
-    val firstVisibleIndex by remember { derivedStateOf { listState.firstVisibleItemIndex } }
-    LaunchedEffect(firstVisibleIndex) {
-        if (firstVisibleIndex < 3 && hasMore && !isLoadingMore) {
+    val lastVisibleIndex by remember {
+        derivedStateOf {
+            listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+        }
+    }
+    LaunchedEffect(lastVisibleIndex) {
+        if (lastVisibleIndex >= listItems.size - 3 && hasMore && !isLoadingMore) {
             onLoadMore()
         }
     }
@@ -110,19 +112,9 @@ fun MessageList(
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),
+            reverseLayout = true,
             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
         ) {
-            if (isLoadingMore) {
-                item(key = "_loading") {
-                    Box(
-                        modifier = Modifier.fillMaxWidth().padding(8.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
-                    }
-                }
-            }
-
             items(listItems, key = {
                 when (it) {
                     is ListItem.Date -> "date_${it.label}"
@@ -134,11 +126,22 @@ fun MessageList(
                     is ListItem.Msg -> MessageRow(message = item.message, myNick = myNick, darkMode = darkMode)
                 }
             }
+
+            if (isLoadingMore) {
+                item(key = "_loading") {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().padding(8.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                    }
+                }
+            }
         }
 
         if (!isAtBottom && listItems.size > 5) {
             SmallFloatingActionButton(
-                onClick = { scope.launch { listState.animateScrollToItem(listItems.size - 1) } },
+                onClick = { scope.launch { listState.animateScrollToItem(0) } },
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(16.dp),
