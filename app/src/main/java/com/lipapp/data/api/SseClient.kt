@@ -11,6 +11,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.BufferedReader
 import java.io.InputStreamReader
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -19,6 +20,10 @@ class SseClient @Inject constructor(
     private val okHttpClient: OkHttpClient,
     private val tokenManager: TokenManager,
 ) {
+    private val sseHttpClient = okHttpClient.newBuilder()
+        .readTimeout(60, TimeUnit.SECONDS)
+        .build()
+
     fun connect(baseUrl: String): Flow<SseEvent> = callbackFlow {
         val url = "${baseUrl.trimEnd('/')}/events"
         val request = Request.Builder()
@@ -27,7 +32,7 @@ class SseClient @Inject constructor(
             .header("Authorization", "Bearer ${tokenManager.token}")
             .build()
 
-        val call = okHttpClient.newCall(request)
+        val call = sseHttpClient.newCall(request)
 
         val job = launch(Dispatchers.IO) {
             val response = call.execute()

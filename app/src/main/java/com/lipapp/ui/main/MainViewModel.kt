@@ -2,16 +2,15 @@ package com.lipapp.ui.main
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.lipapp.data.api.SseEventBus
 import com.lipapp.data.model.*
 import com.lipapp.data.prefs.AppPreferences
 import com.lipapp.data.repository.LipserviceRepository
+import com.lipapp.util.NotificationHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import javax.inject.Inject
@@ -37,18 +36,24 @@ data class MainUiState(
 class MainViewModel @Inject constructor(
     private val repository: LipserviceRepository,
     private val prefs: AppPreferences,
+    private val eventBus: SseEventBus,
+    private val notificationHelper: NotificationHelper,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(MainUiState())
     val state: StateFlow<MainUiState> = _state
 
     private val json = Json { ignoreUnknownKeys = true; coerceInputValues = true }
-    private var sseJob: Job? = null
 
     init {
         viewModelScope.launch {
             prefs.darkMode.collect { dark ->
                 _state.update { it.copy(darkMode = dark) }
+            }
+        }
+        viewModelScope.launch {
+            eventBus.events.collect { event ->
+                handleSseEvent(event)
             }
         }
         loadInitialData()
@@ -79,8 +84,6 @@ class MainViewModel @Inject constructor(
                         }
                     }
                 } catch (_: Exception) { }
-
-                startSseConnection()
             } catch (e: Exception) {
                 _state.update { it.copy(error = e.message) }
             }
@@ -88,6 +91,8 @@ class MainViewModel @Inject constructor(
     }
 
     fun selectTarget(target: ChatTarget) {
+        eventBus.currentTarget.set(target.key)
+        notificationHelper.cancelNotification(target.network, target.displayName)
         _state.update {
             it.copy(
                 currentTarget = target,
@@ -310,11 +315,6 @@ class MainViewModel @Inject constructor(
         _state.update { it.copy(error = null) }
     }
 
-    fun logout() {
-        sseJob?.cancel()
-        repository.logout()
-    }
-
     private suspend fun reloadSidebar() {
         try {
             val networks = repository.getNetworks()
@@ -326,27 +326,6 @@ class MainViewModel @Inject constructor(
             val nicks = networks.associate { it.name to it.nick }
             _state.update { it.copy(sidebar = sidebarItems, myNicks = nicks) }
         } catch (_: Exception) { }
-    }
-
-    private fun startSseConnection() {
-        sseJob?.cancel()
-        sseJob = viewModelScope.launch {
-            var backoff = 1000L
-            while (isActive) {
-                try {
-                    repository.connectSse().collect { event ->
-                        handleSseEvent(event)
-                        backoff = 1000L
-                    }
-                } catch (_: Exception) {
-                    if (isActive) {
-                        delay(backoff)
-                        backoff = (backoff * 2).coerceAtMost(30_000L)
-                        reloadSidebar()
-                    }
-                }
-            }
-        }
     }
 
     private fun handleSseEvent(event: SseEvent) {

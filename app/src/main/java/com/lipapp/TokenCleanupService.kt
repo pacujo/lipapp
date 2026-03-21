@@ -18,6 +18,7 @@ class TokenCleanupService : Service() {
         START_NOT_STICKY
 
     override fun onTaskRemoved(rootIntent: Intent?) {
+        stopService(Intent(this, SseService::class.java))
         tokenManager.clear()
         stopSelf()
         super.onTaskRemoved(rootIntent)
