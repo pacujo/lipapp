@@ -1,16 +1,12 @@
 package com.lipapp
 
-import android.app.Notification
 import android.app.Service
 import android.content.Intent
-import android.content.pm.ServiceInfo
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
-import android.os.Build
 import android.os.IBinder
-import androidx.core.app.NotificationCompat
 import com.lipapp.data.api.SseClient
 import com.lipapp.data.api.SseEventBus
 import com.lipapp.data.api.TokenManager
@@ -34,21 +30,9 @@ class SseService : Service() {
     private var sseJob: Job? = null
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
 
-    companion object {
-        const val CHANNEL_ID = "connection"
-        const val NOTIFICATION_ID = 1
-    }
-
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val notification = buildForegroundNotification()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            startForeground(NOTIFICATION_ID, notification,
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_REMOTE_MESSAGING)
-        } else {
-            startForeground(NOTIFICATION_ID, notification)
-        }
         startSseConnection()
         registerNetworkCallback()
         return START_STICKY
@@ -60,16 +44,6 @@ class SseService : Service() {
         unregisterNetworkCallback()
         super.onDestroy()
     }
-
-    private fun buildForegroundNotification(): Notification =
-        NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle("Lip")
-            .setContentText("Connected")
-            .setOngoing(true)
-            .setSilent(true)
-            .setPriority(NotificationCompat.PRIORITY_MIN)
-            .build()
 
     private fun startSseConnection() {
         sseJob?.cancel()

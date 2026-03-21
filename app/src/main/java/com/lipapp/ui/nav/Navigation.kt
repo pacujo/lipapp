@@ -4,7 +4,6 @@ import android.content.Intent
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalContext
-import androidx.core.content.ContextCompat
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -29,9 +28,7 @@ fun LipAppNavigation(startLoggedIn: Boolean = false) {
         composable("main") {
             val context = LocalContext.current
             LaunchedEffect(Unit) {
-                ContextCompat.startForegroundService(
-                    context, Intent(context, SseService::class.java),
-                )
+                context.startService(Intent(context, SseService::class.java))
             }
             MainScreen()
         }

@@ -25,13 +25,6 @@ class LipApp : Application() {
                 NotificationManager.IMPORTANCE_DEFAULT,
             ).apply { description = "IRC message notifications" }
         )
-        nm.createNotificationChannel(
-            NotificationChannel(
-                SseService.CHANNEL_ID,
-                "Connection",
-                NotificationManager.IMPORTANCE_MIN,
-            ).apply { description = "Persistent connection status" }
-        )
 
         registerActivityLifecycleCallbacks(object : ActivityLifecycleCallbacks {
             override fun onActivityStarted(activity: Activity) {
