@@ -24,6 +24,7 @@ fun MainScreen(
 
     var showAddNetwork by remember { mutableStateOf(false) }
     var showJoinChannel by remember { mutableStateOf(false) }
+    var showStartQuery by remember { mutableStateOf(false) }
     var showSearch by remember { mutableStateOf(false) }
     var confirmAction by remember { mutableStateOf<ConfirmAction?>(null) }
 
@@ -68,6 +69,7 @@ fun MainScreen(
                 },
                 onAddNetwork = { showAddNetwork = true },
                 onJoinChannel = { showJoinChannel = true },
+                onStartQuery = { showStartQuery = true },
             )
         },
     ) {
@@ -188,6 +190,19 @@ fun MainScreen(
             onJoin = { network, channel ->
                 viewModel.joinChannel(network, channel)
                 showJoinChannel = false
+            },
+        )
+    }
+
+    if (showStartQuery) {
+        StartQueryDialog(
+            networks = state.sidebar.map { it.network.name },
+            currentNetwork = state.currentTarget?.network,
+            onDismiss = { showStartQuery = false },
+            onOpen = { network, nick ->
+                viewModel.openQuery(network, nick)
+                showStartQuery = false
+                scope.launch { drawerState.close() }
             },
         )
     }

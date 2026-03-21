@@ -33,6 +33,7 @@ fun Sidebar(
     onCloseQuery: (network: String, nick: String) -> Unit,
     onAddNetwork: () -> Unit,
     onJoinChannel: () -> Unit,
+    onStartQuery: () -> Unit,
 ) {
     ModalDrawerSheet(modifier = Modifier.width(280.dp)) {
         Row(
@@ -52,6 +53,9 @@ fun Sidebar(
                 }
                 IconButton(onClick = onJoinChannel, modifier = Modifier.size(32.dp)) {
                     Icon(Icons.Default.Tag, contentDescription = "Join channel", modifier = Modifier.size(20.dp))
+                }
+                IconButton(onClick = onStartQuery, modifier = Modifier.size(32.dp)) {
+                    Icon(Icons.Default.Person, contentDescription = "Private message", modifier = Modifier.size(20.dp))
                 }
             }
         }

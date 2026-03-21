@@ -111,8 +111,11 @@ class MainViewModel @Inject constructor(
                 val page = when (target) {
                     is ChatTarget.Channel ->
                         repository.getChannelMessages(target.network, target.name, limit = 100)
-                    is ChatTarget.Query ->
+                    is ChatTarget.Query -> try {
                         repository.getPrivateMessages(target.network, target.nick, limit = 100)
+                    } catch (_: Exception) {
+                        MessagePage(messages = emptyList(), hasMore = false)
+                    }
                 }
                 _state.update {
                     it.copy(
@@ -172,8 +175,10 @@ class MainViewModel @Inject constructor(
                 when (target) {
                     is ChatTarget.Channel ->
                         repository.sendChannelMessage(target.network, target.name, msgText, msgType)
-                    is ChatTarget.Query ->
+                    is ChatTarget.Query -> {
                         repository.sendPrivateMessage(target.network, target.nick, msgText, msgType)
+                        reloadSidebar()
+                    }
                 }
             } catch (e: Exception) {
                 _state.update { it.copy(error = e.message) }
@@ -224,6 +229,10 @@ class MainViewModel @Inject constructor(
                 _state.update { it.copy(error = e.message) }
             }
         }
+    }
+
+    fun openQuery(network: String, nick: String) {
+        selectTarget(ChatTarget.Query(network, nick))
     }
 
     fun closeQuery(network: String, nick: String) {
@@ -346,6 +355,15 @@ class MainViewModel @Inject constructor(
                     updatePointer(targetKey, msg.id)
                 } else {
                     _state.update { it.copy(unread = it.unread + targetKey) }
+                }
+
+                if (msg.channel == null && msg.nick != null) {
+                    val hasQuery = _state.value.sidebar.any { item ->
+                        item.queries.any { it.nick == msg.nick && item.network.name == msg.network }
+                    }
+                    if (!hasQuery) {
+                        viewModelScope.launch { reloadSidebar() }
+                    }
                 }
             }
             "network_state" -> {

@@ -162,6 +162,75 @@ fun JoinChannelDialog(
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun StartQueryDialog(
+    networks: List<String>,
+    currentNetwork: String?,
+    onDismiss: () -> Unit,
+    onOpen: (network: String, nick: String) -> Unit,
+) {
+    var selectedNetwork by remember { mutableStateOf(currentNetwork ?: networks.firstOrNull() ?: "") }
+    var nick by remember { mutableStateOf("") }
+    var expanded by remember { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Private Message") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                ExposedDropdownMenuBox(
+                    expanded = expanded,
+                    onExpandedChange = { expanded = it },
+                ) {
+                    OutlinedTextField(
+                        value = selectedNetwork,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Network") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
+                        modifier = Modifier.menuAnchor().fillMaxWidth(),
+                    )
+                    ExposedDropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false },
+                    ) {
+                        networks.forEach { net ->
+                            DropdownMenuItem(
+                                text = { Text(net) },
+                                onClick = {
+                                    selectedNetwork = net
+                                    expanded = false
+                                },
+                            )
+                        }
+                    }
+                }
+                OutlinedTextField(
+                    value = nick,
+                    onValueChange = { nick = it },
+                    label = { Text("Nick") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    if (selectedNetwork.isNotBlank() && nick.isNotBlank()) {
+                        onOpen(selectedNetwork, nick.trim())
+                    }
+                },
+            ) { Text("Open") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        },
+    )
+}
+
 @Composable
 fun ConfirmDialog(
     message: String,
