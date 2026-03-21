@@ -72,7 +72,7 @@ fun MainScreen(
         val titlePrefix = if (state.unread.isNotEmpty()) "* " else ""
         val title = state.currentTarget?.let { target ->
             "$titlePrefix${target.network} / ${target.displayName}"
-        } ?: "${titlePrefix}LipApp"
+        } ?: "${titlePrefix}Lip"
 
         Scaffold(
             topBar = {
