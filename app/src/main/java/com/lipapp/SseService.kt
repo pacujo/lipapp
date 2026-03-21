@@ -101,7 +101,7 @@ class SseService : Service() {
             val msg = json.decodeFromString<MessageEvent>(event.data)
             val target = msg.channel ?: msg.nick ?: return
             val targetKey = "${msg.network}/$target"
-            if (targetKey == eventBus.currentTarget.get()) return
+            if (targetKey == eventBus.currentTarget.get() && eventBus.isInForeground.get()) return
             notificationHelper.showMessageNotification(msg.network, target, msg.from, msg.text)
         } catch (_: Exception) {}
     }

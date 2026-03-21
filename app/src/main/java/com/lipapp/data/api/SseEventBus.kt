@@ -3,6 +3,7 @@ package com.lipapp.data.api
 import com.lipapp.data.model.SseEvent
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -13,6 +14,7 @@ class SseEventBus @Inject constructor() {
     val events: SharedFlow<SseEvent> = _events
 
     val currentTarget = AtomicReference<String?>(null)
+    val isInForeground = AtomicBoolean(true)
 
     fun emit(event: SseEvent) {
         _events.tryEmit(event)
