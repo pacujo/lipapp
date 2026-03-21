@@ -6,7 +6,9 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.lipapp.ui.theme.DeepPurple
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
@@ -77,6 +79,12 @@ fun MainScreen(
         Scaffold(
             topBar = {
                 TopAppBar(
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = DeepPurple,
+                        titleContentColor = Color.White,
+                        navigationIconContentColor = Color.White,
+                        actionIconContentColor = Color.White,
+                    ),
                     title = { Text(title, maxLines = 1) },
                     navigationIcon = {
                         IconButton(onClick = { scope.launch { drawerState.open() } }) {
