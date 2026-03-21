@@ -52,6 +52,20 @@ fun MessageList(
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
 
+    val listItems = remember(messages) {
+        buildList {
+            var lastDate: String? = null
+            for (msg in messages) {
+                val msgDate = parseDate(msg.time)
+                if (msgDate != null && msgDate != lastDate) {
+                    lastDate = msgDate
+                    add(ListItem.Date(msgDate))
+                }
+                add(ListItem.Msg(msg))
+            }
+        }
+    }
+
     val isAtBottom by remember {
         derivedStateOf {
             val info = listState.layoutInfo
@@ -61,11 +75,11 @@ fun MessageList(
     }
 
     var lastSeenId by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(messages.lastOrNull()?.id) {
+    LaunchedEffect(messages.lastOrNull()?.id, listItems.size) {
         val newId = messages.lastOrNull()?.id
-        if (newId != null && newId != lastSeenId) {
+        if (newId != null && newId != lastSeenId && listItems.isNotEmpty()) {
             if (lastSeenId == null || isAtBottom) {
-                listState.animateScrollToItem(messages.size - 1)
+                listState.animateScrollToItem(listItems.size - 1)
             }
             lastSeenId = newId
         }
@@ -73,8 +87,8 @@ fun MessageList(
 
     val imeBottom = WindowInsets.ime.getBottom(LocalDensity.current)
     LaunchedEffect(imeBottom) {
-        if (imeBottom > 0 && messages.isNotEmpty() && isAtBottom) {
-            listState.animateScrollToItem(messages.size - 1)
+        if (imeBottom > 0 && listItems.isNotEmpty() && isAtBottom) {
+            listState.animateScrollToItem(listItems.size - 1)
         }
     }
 
@@ -109,20 +123,22 @@ fun MessageList(
                 }
             }
 
-            var lastDate: String? = null
-            items(messages, key = { it.id }) { message ->
-                val msgDate = parseDate(message.time)
-                if (msgDate != null && msgDate != lastDate) {
-                    lastDate = msgDate
-                    DateSeparator(msgDate)
+            items(listItems, key = {
+                when (it) {
+                    is ListItem.Date -> "date_${it.label}"
+                    is ListItem.Msg -> it.message.id
                 }
-                MessageRow(message = message, myNick = myNick, darkMode = darkMode)
+            }) { item ->
+                when (item) {
+                    is ListItem.Date -> DateSeparator(item.label)
+                    is ListItem.Msg -> MessageRow(message = item.message, myNick = myNick, darkMode = darkMode)
+                }
             }
         }
 
-        if (!isAtBottom && messages.size > 5) {
+        if (!isAtBottom && listItems.size > 5) {
             SmallFloatingActionButton(
-                onClick = { scope.launch { listState.animateScrollToItem(messages.size - 1) } },
+                onClick = { scope.launch { listState.animateScrollToItem(listItems.size - 1) } },
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(16.dp),
@@ -294,6 +310,11 @@ private fun AnnotatedString.Builder.appendWithSpans(
     end: Int,
 ) {
     append(source.subSequence(start, end))
+}
+
+private sealed class ListItem {
+    data class Date(val label: String) : ListItem()
+    data class Msg(val message: Message) : ListItem()
 }
 
 private fun formatTime(isoTime: String): String {
