@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import com.lipapp.data.model.Message
 import com.lipapp.ui.theme.*
 import com.lipapp.util.parseIrcFormat
+import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
@@ -297,7 +298,9 @@ private fun AnnotatedString.Builder.appendWithSpans(
 
 private fun formatTime(isoTime: String): String {
     return try {
-        ZonedDateTime.parse(isoTime).format(timeFormatter)
+        ZonedDateTime.parse(isoTime)
+            .withZoneSameInstant(ZoneId.systemDefault())
+            .format(timeFormatter)
     } catch (_: DateTimeParseException) {
         try {
             isoTime.substring(11, 16)
@@ -307,6 +310,8 @@ private fun formatTime(isoTime: String): String {
 
 private fun parseDate(isoTime: String): String? {
     return try {
-        ZonedDateTime.parse(isoTime).format(dateFormatter)
+        ZonedDateTime.parse(isoTime)
+            .withZoneSameInstant(ZoneId.systemDefault())
+            .format(dateFormatter)
     } catch (_: Exception) { null }
 }
