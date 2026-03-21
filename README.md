@@ -38,6 +38,14 @@ Open the `lipapp` directory in Android Studio, or build from the command line:
 ./gradlew assembleDebug
 ```
 
+## Credits
+
+Brunt work by Claude (Anthropic).
+
+## License
+
+Apache License 2.0 -- see [LICENSE](LICENSE).
+
 ## Configuration
 
 On the login screen, enter:
