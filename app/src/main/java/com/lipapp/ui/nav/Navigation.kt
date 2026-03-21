@@ -8,10 +8,10 @@ import com.lipapp.ui.login.LoginScreen
 import com.lipapp.ui.main.MainScreen
 
 @Composable
-fun LipAppNavigation() {
+fun LipAppNavigation(startLoggedIn: Boolean = false) {
     val navController = rememberNavController()
 
-    NavHost(navController = navController, startDestination = "login") {
+    NavHost(navController = navController, startDestination = if (startLoggedIn) "main" else "login") {
         composable("login") {
             LoginScreen(
                 onLoginSuccess = {
