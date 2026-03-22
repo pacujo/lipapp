@@ -13,6 +13,7 @@ datastore = "1.1.1"
 coroutines = "1.8.1"
 activity-compose = "1.9.1"
 core-ktx = "1.13.1"
+security-crypto = "1.1.0-alpha06"
 hilt-navigation = "1.2.0"
 retrofit-serialization-converter = "1.0.0"
 
@@ -42,6 +43,7 @@ datastore = { group = "androidx.datastore", name = "datastore-preferences", vers
 coroutines = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
 activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activity-compose" }
 core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "core-ktx" }
+security-crypto = { group = "androidx.security", name = "security-crypto", version.ref = "security-crypto" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

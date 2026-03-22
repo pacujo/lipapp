@@ -68,4 +68,5 @@ dependencies {
     implementation(libs.coroutines)
     implementation(libs.activity.compose)
     implementation(libs.core.ktx)
+    implementation(libs.security.crypto)
 }

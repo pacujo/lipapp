@@ -1,6 +1,8 @@
 package com.lipapp.data.api
 
 import android.content.Context
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKeys
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -9,7 +11,28 @@ import javax.inject.Singleton
 class TokenManager @Inject constructor(
     @ApplicationContext context: Context,
 ) {
-    private val prefs = context.getSharedPreferences("auth", Context.MODE_PRIVATE)
+    private val masterKeyAlias = MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC)
+
+    private val prefs = EncryptedSharedPreferences.create(
+        "auth_encrypted",
+        masterKeyAlias,
+        context,
+        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
+    )
+
+    init {
+        val oldPrefs = context.getSharedPreferences("auth", Context.MODE_PRIVATE)
+        if (oldPrefs.contains("token")) {
+            prefs.edit()
+                .putString("token", oldPrefs.getString("token", null))
+                .putString("base_url", oldPrefs.getString("base_url", ""))
+                .putString("username", oldPrefs.getString("username", ""))
+                .putString("password", oldPrefs.getString("password", ""))
+                .apply()
+            oldPrefs.edit().clear().apply()
+        }
+    }
 
     var token: String?
         get() = prefs.getString("token", null)
