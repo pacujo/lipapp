@@ -81,12 +81,30 @@ class MainViewModel @Inject constructor(
                 } catch (_: Exception) {
                     if (isActive) {
                         refreshToken()
+                        backfillMessages()
                         delay(backoff)
                         backoff = (backoff * 2).coerceAtMost(30_000L)
                     }
                 }
             }
         }
+    }
+
+    private suspend fun backfillMessages() {
+        val target = _state.value.currentTarget ?: return
+        val lastId = _state.value.messages.lastOrNull()?.id ?: return
+        try {
+            val page = when (target) {
+                is ChatTarget.Channel ->
+                    repository.getChannelMessages(target.network, target.name, after = lastId)
+                is ChatTarget.Query ->
+                    repository.getPrivateMessages(target.network, target.nick, after = lastId)
+            }
+            if (page.messages.isNotEmpty()) {
+                _state.update { it.copy(messages = it.messages + page.messages) }
+                updatePointer(target.key, page.messages.last().id)
+            }
+        } catch (_: Exception) { }
     }
 
     private fun refreshToken() {
@@ -263,6 +281,7 @@ class MainViewModel @Inject constructor(
                 repository.leaveChannel(network, channel)
                 if (_state.value.currentTarget == ChatTarget.Channel(network, channel)) {
                     _state.update { it.copy(currentTarget = null, messages = emptyList()) }
+                    saveSessionCleared()
                 }
                 reloadSidebar()
             } catch (e: Exception) {
@@ -281,6 +300,7 @@ class MainViewModel @Inject constructor(
                 repository.closeQuery(network, nick)
                 if (_state.value.currentTarget == ChatTarget.Query(network, nick)) {
                     _state.update { it.copy(currentTarget = null, messages = emptyList()) }
+                    saveSessionCleared()
                 }
                 reloadSidebar()
             } catch (e: Exception) {
@@ -317,6 +337,7 @@ class MainViewModel @Inject constructor(
                 repository.deleteNetwork(name)
                 if (_state.value.currentTarget?.network == name) {
                     _state.update { it.copy(currentTarget = null, messages = emptyList()) }
+                    saveSessionCleared()
                 }
                 reloadSidebar()
             } catch (e: Exception) {
@@ -393,6 +414,7 @@ class MainViewModel @Inject constructor(
                 if (targetKey == currentKey) {
                     _state.update { it.copy(messages = it.messages + message) }
                     updatePointer(targetKey, msg.id)
+                    saveSession()
                 } else {
                     _state.update { it.copy(unread = it.unread + targetKey) }
                 }
@@ -449,6 +471,21 @@ class MainViewModel @Inject constructor(
                         currentNetwork = target.network,
                         currentChannel = (target as? ChatTarget.Channel)?.name,
                         currentQuery = (target as? ChatTarget.Query)?.nick,
+                        pointers = _state.value.pointers.toMap(),
+                    )
+                )
+            } catch (_: Exception) { }
+        }
+    }
+
+    private fun saveSessionCleared() {
+        viewModelScope.launch {
+            try {
+                repository.updateSession(
+                    SessionUpdate(
+                        currentNetwork = null,
+                        currentChannel = null,
+                        currentQuery = null,
                         pointers = _state.value.pointers.toMap(),
                     )
                 )
