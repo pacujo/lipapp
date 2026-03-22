@@ -36,10 +36,14 @@ class SseClient @Inject constructor(
 
         val job = launch(Dispatchers.IO) {
             val response = call.execute()
-            val body = response.body ?: return@launch
-            val reader = BufferedReader(InputStreamReader(body.byteStream()))
-
             try {
+                if (!response.isSuccessful) {
+                    throw java.io.IOException("SSE connect failed: ${response.code}")
+                }
+                val body = response.body
+                    ?: throw java.io.IOException("SSE response body is null")
+                val reader = BufferedReader(InputStreamReader(body.byteStream()))
+
                 var event = ""
                 var data = StringBuilder()
                 var id: String? = null
@@ -68,8 +72,8 @@ class SseClient @Inject constructor(
                     }
                 }
             } finally {
-                reader.close()
                 response.close()
+                channel.close()
             }
         }
 
