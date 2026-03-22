@@ -68,7 +68,7 @@ fun MessageList(
 
     val isAtBottom by remember {
         derivedStateOf {
-            listState.firstVisibleItemIndex <= 1
+            listState.firstVisibleItemIndex <= 2
         }
     }
 

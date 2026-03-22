@@ -6,6 +6,7 @@ import com.lipapp.data.api.TokenManager
 import com.lipapp.data.model.*
 import com.lipapp.data.prefs.AppPreferences
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -20,6 +21,8 @@ class LipserviceRepository @Inject constructor(
 
     suspend fun login(url: String, username: String, password: String): TokenResponse {
         tokenManager.baseUrl = url
+        tokenManager.username = username
+        tokenManager.password = password
         val response = api.login(TokenRequest(username, password))
         tokenManager.token = response.token
         prefs.saveLoginInfo(url, username)
@@ -29,6 +32,9 @@ class LipserviceRepository @Inject constructor(
     fun logout() {
         tokenManager.token = null
     }
+
+    fun loginSync(username: String, password: String): TokenResponse =
+        runBlocking { api.login(TokenRequest(username, password)) }
 
     fun connectSse(): Flow<SseEvent> = sseClient.connect(tokenManager.baseUrl)
 

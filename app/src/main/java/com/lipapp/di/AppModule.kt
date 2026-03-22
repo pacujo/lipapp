@@ -3,6 +3,7 @@ package com.lipapp.di
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import com.lipapp.data.api.ApiInterceptor
 import com.lipapp.data.api.LipserviceApi
+import com.lipapp.data.api.TokenAuthenticator
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -27,9 +28,13 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideOkHttpClient(apiInterceptor: ApiInterceptor): OkHttpClient =
+    fun provideOkHttpClient(
+        apiInterceptor: ApiInterceptor,
+        tokenAuthenticator: TokenAuthenticator,
+    ): OkHttpClient =
         OkHttpClient.Builder()
             .addInterceptor(apiInterceptor)
+            .authenticator(tokenAuthenticator)
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(0, TimeUnit.MILLISECONDS)
             .build()

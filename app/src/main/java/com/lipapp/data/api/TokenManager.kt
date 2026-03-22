@@ -19,6 +19,14 @@ class TokenManager @Inject constructor(
         get() = prefs.getString("base_url", "") ?: ""
         set(value) { prefs.edit().putString("base_url", value).apply() }
 
+    var username: String
+        get() = prefs.getString("username", "") ?: ""
+        set(value) { prefs.edit().putString("username", value).apply() }
+
+    var password: String
+        get() = prefs.getString("password", "") ?: ""
+        set(value) { prefs.edit().putString("password", value).apply() }
+
     fun clear() {
         prefs.edit().clear().apply()
     }

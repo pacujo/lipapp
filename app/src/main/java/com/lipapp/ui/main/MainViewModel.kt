@@ -2,15 +2,21 @@ package com.lipapp.ui.main
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.lipapp.data.api.SseClient
 import com.lipapp.data.api.SseEventBus
+import com.lipapp.data.api.TokenManager
 import com.lipapp.data.model.*
 import com.lipapp.data.prefs.AppPreferences
 import com.lipapp.data.repository.LipserviceRepository
 import com.lipapp.util.NotificationHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import javax.inject.Inject
@@ -38,12 +44,15 @@ class MainViewModel @Inject constructor(
     private val prefs: AppPreferences,
     private val eventBus: SseEventBus,
     private val notificationHelper: NotificationHelper,
+    private val sseClient: SseClient,
+    private val tokenManager: TokenManager,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(MainUiState())
     val state: StateFlow<MainUiState> = _state
 
     private val json = Json { ignoreUnknownKeys = true; coerceInputValues = true }
+    private var sseJob: Job? = null
 
     init {
         viewModelScope.launch {
@@ -51,12 +60,43 @@ class MainViewModel @Inject constructor(
                 _state.update { it.copy(darkMode = dark) }
             }
         }
-        viewModelScope.launch {
-            eventBus.events.collect { event ->
-                handleSseEvent(event)
+        loadInitialData()
+        startSseConnection()
+    }
+
+    private fun startSseConnection() {
+        sseJob?.cancel()
+        val baseUrl = tokenManager.baseUrl
+        if (baseUrl.isEmpty() || tokenManager.token == null) return
+
+        sseJob = viewModelScope.launch(Dispatchers.IO) {
+            refreshToken()
+            var backoff = 1000L
+            while (isActive) {
+                try {
+                    sseClient.connect(baseUrl).collect { event ->
+                        handleSseEvent(event)
+                        backoff = 1000L
+                    }
+                } catch (_: Exception) {
+                    if (isActive) {
+                        refreshToken()
+                        delay(backoff)
+                        backoff = (backoff * 2).coerceAtMost(30_000L)
+                    }
+                }
             }
         }
-        loadInitialData()
+    }
+
+    private fun refreshToken() {
+        val username = tokenManager.username
+        val password = tokenManager.password
+        if (username.isEmpty() || password.isEmpty()) return
+        try {
+            val response = repository.loginSync(username, password)
+            tokenManager.token = response.token
+        } catch (_: Exception) { }
     }
 
     private fun loadInitialData() {
