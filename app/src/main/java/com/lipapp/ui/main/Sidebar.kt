@@ -164,47 +164,104 @@ fun Sidebar(
                     }
                 }
 
-                items(item.queries) { query ->
-                    val key = "${net.name}/${query.nick}"
-                    val isSelected = currentTarget == ChatTarget.Query(net.name, query.nick)
-                    val isUnread = key in unread
-                    var showMenu by remember { mutableStateOf(false) }
-
-                    Box {
-                        NavigationDrawerItem(
-                            label = {
-                                Text(
-                                    query.nick,
-                                    fontWeight = if (isUnread) FontWeight.Bold else FontWeight.Normal,
-                                    fontStyle = FontStyle.Italic,
-                                    maxLines = 1,
-                                )
-                            },
-                            selected = isSelected,
-                            onClick = { onSelectQuery(net.name, query.nick) },
-                            modifier = Modifier
-                                .padding(start = 24.dp, end = 8.dp)
-                                .combinedClickable(
-                                    onClick = { onSelectQuery(net.name, query.nick) },
-                                    onLongClick = { showMenu = true },
-                                ),
-                            icon = {
-                                Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(16.dp))
-                            },
-                        )
-
-                        DropdownMenu(
-                            expanded = showMenu,
-                            onDismissRequest = { showMenu = false },
-                            offset = DpOffset(72.dp, 0.dp),
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text("Close") },
-                                onClick = { showMenu = false; onCloseQuery(net.name, query.nick) },
-                            )
-                        }
-                    }
+                val (serviceQueries, userQueries) = item.queries.partition { q ->
+                    '.' in q.nick || q.nick.endsWith("Serv")
                 }
+
+                item {
+                    var showServicesState by remember { mutableStateOf(false) }
+                    SidebarQueries(
+                        net = net.name,
+                        userQueries = userQueries,
+                        serviceQueries = serviceQueries,
+                        showServices = showServicesState,
+                        onToggleServices = { showServicesState = !showServicesState },
+                        currentTarget = currentTarget,
+                        unread = unread,
+                        onSelectQuery = onSelectQuery,
+                        onCloseQuery = onCloseQuery,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun SidebarQueries(
+    net: String,
+    userQueries: List<com.lipapp.data.model.QueryResponse>,
+    serviceQueries: List<com.lipapp.data.model.QueryResponse>,
+    showServices: Boolean,
+    onToggleServices: () -> Unit,
+    currentTarget: ChatTarget?,
+    unread: Set<String>,
+    onSelectQuery: (String, String) -> Unit,
+    onCloseQuery: (String, String) -> Unit,
+) {
+    val visibleQueries = if (showServices) userQueries + serviceQueries else userQueries
+
+    Column {
+        visibleQueries.forEach { query ->
+            val key = "$net/${query.nick}"
+            val isSelected = currentTarget == ChatTarget.Query(net, query.nick)
+            val isUnread = key in unread
+            var showMenu by remember { mutableStateOf(false) }
+
+            Box {
+                NavigationDrawerItem(
+                    label = {
+                        Text(
+                            query.nick,
+                            fontWeight = if (isUnread) FontWeight.Bold else FontWeight.Normal,
+                            fontStyle = FontStyle.Italic,
+                            maxLines = 1,
+                        )
+                    },
+                    selected = isSelected,
+                    onClick = { onSelectQuery(net, query.nick) },
+                    modifier = Modifier
+                        .padding(start = 24.dp, end = 8.dp)
+                        .combinedClickable(
+                            onClick = { onSelectQuery(net, query.nick) },
+                            onLongClick = { showMenu = true },
+                        ),
+                    icon = {
+                        Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(16.dp))
+                    },
+                )
+
+                DropdownMenu(
+                    expanded = showMenu,
+                    onDismissRequest = { showMenu = false },
+                    offset = DpOffset(72.dp, 0.dp),
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Close") },
+                        onClick = { showMenu = false; onCloseQuery(net, query.nick) },
+                    )
+                }
+            }
+        }
+
+        if (serviceQueries.isNotEmpty()) {
+            TextButton(
+                onClick = onToggleServices,
+                modifier = Modifier.padding(start = 24.dp),
+            ) {
+                Icon(
+                    if (showServices) Icons.Default.VisibilityOff
+                        else Icons.Default.Visibility,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    if (showServices) "Hide services"
+                        else "${serviceQueries.size} hidden",
+                    style = MaterialTheme.typography.labelSmall,
+                )
             }
         }
     }
