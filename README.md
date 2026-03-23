@@ -2,10 +2,6 @@
 
 Android IRC client for [Lipservice](../lipservice), built with Kotlin and Jetpack Compose.
 
-This is the Android counterpart of [lip2](../lip2), a GTK4 IRC client. Both
-communicate with a Lipservice bouncer via its REST + SSE API rather than
-speaking the IRC protocol directly.
-
 ## Features
 
 - Multi-network IRC via Lipservice bouncer
@@ -41,6 +37,11 @@ Open the `lipapp` directory in Android Studio, or build from the command line:
 ## Credits
 
 Brunt work by Claude (Anthropic).
+
+## See Also
+
+- [lip2](../lip2) — GTK 4 desktop client for Lipservice
+- [Lipservice](../lipservice) — IRC bouncer with REST + SSE API
 
 ## License
 
