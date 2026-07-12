@@ -2,6 +2,8 @@ package com.lipapp.ui.main
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
@@ -23,9 +25,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import com.lipapp.data.model.Message
 import com.lipapp.ui.theme.*
 import com.lipapp.util.parseIrcFormat
+import java.time.Instant
+import java.time.LocalDateTime
+import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
@@ -90,6 +96,12 @@ fun MessageList(
         }
     }
 
+    val stickyDate by remember(listItems) {
+        derivedStateOf {
+            stickyDateForVisibleItems(listItems, listState)
+        }
+    }
+
     val lastVisibleIndex by remember {
         derivedStateOf {
             listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
@@ -139,6 +151,16 @@ fun MessageList(
             }
         }
 
+        if (stickyDate != null) {
+            StickyDateHeader(
+                date = stickyDate!!,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 8.dp)
+                    .zIndex(1f),
+            )
+        }
+
         if (!isAtBottom && listItems.size > 5) {
             SmallFloatingActionButton(
                 onClick = { scope.launch { listState.animateScrollToItem(0) } },
@@ -150,6 +172,23 @@ fun MessageList(
                 Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Jump to latest")
             }
         }
+    }
+}
+
+@Composable
+private fun StickyDateHeader(date: String, modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        shadowElevation = 4.dp,
+    ) {
+        Text(
+            text = date,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
@@ -321,21 +360,74 @@ private sealed class ListItem {
 }
 
 private fun formatTime(isoTime: String): String {
-    return try {
-        ZonedDateTime.parse(isoTime)
-            .withZoneSameInstant(ZoneId.systemDefault())
-            .format(timeFormatter)
-    } catch (_: DateTimeParseException) {
+    return parseMessageTime(isoTime)?.format(timeFormatter) ?: run {
         try {
             isoTime.substring(11, 16)
-        } catch (_: Exception) { "" }
+        } catch (_: Exception) {
+            ""
+        }
     }
 }
 
 private fun parseDate(isoTime: String): String? {
+    return parseMessageTime(isoTime)?.format(dateFormatter)
+}
+
+private fun parseMessageTime(isoTime: String): ZonedDateTime? {
+    if (isoTime.isBlank()) return null
     return try {
-        ZonedDateTime.parse(isoTime)
-            .withZoneSameInstant(ZoneId.systemDefault())
-            .format(dateFormatter)
-    } catch (_: Exception) { null }
+        ZonedDateTime.parse(isoTime).withZoneSameInstant(ZoneId.systemDefault())
+    } catch (_: DateTimeParseException) {
+        try {
+            Instant.parse(isoTime).atZone(ZoneId.systemDefault())
+        } catch (_: DateTimeParseException) {
+            try {
+                OffsetDateTime.parse(isoTime).atZoneSameInstant(ZoneId.systemDefault())
+            } catch (_: DateTimeParseException) {
+                try {
+                    LocalDateTime.parse(isoTime).atZone(ZoneId.systemDefault())
+                } catch (_: DateTimeParseException) {
+                    null
+                }
+            }
+        }
+    }
+}
+
+private fun stickyDateForVisibleItems(
+    listItems: List<ListItem>,
+    listState: LazyListState,
+): String? {
+    if (listItems.isEmpty()) return null
+    val visible = listState.layoutInfo.visibleItemsInfo
+    val topIndex = if (visible.isNotEmpty()) {
+        visible.maxOf { it.index }
+    } else {
+        listState.firstVisibleItemIndex.coerceIn(0, listItems.lastIndex)
+    }
+    return dateForListIndex(listItems, topIndex)
+}
+
+private fun dateForListIndex(listItems: List<ListItem>, index: Int): String? {
+    when (val item = listItems.getOrNull(index)) {
+        is ListItem.Date -> return item.label
+        is ListItem.Msg -> Unit
+        null -> return null
+    }
+    for (i in index + 1 until listItems.size) {
+        if (listItems[i] is ListItem.Date) {
+            return (listItems[i] as ListItem.Date).label
+        }
+    }
+    for (i in index - 1 downTo 0) {
+        if (listItems[i] is ListItem.Date) {
+            return (listItems[i] as ListItem.Date).label
+        }
+    }
+    for (i in index downTo 0) {
+        if (listItems[i] is ListItem.Msg) {
+            return parseDate((listItems[i] as ListItem.Msg).message.time)
+        }
+    }
+    return null
 }
