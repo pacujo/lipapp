@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import javax.inject.Inject
 
@@ -75,7 +76,9 @@ class MainViewModel @Inject constructor(
             while (isActive) {
                 try {
                     sseClient.connect(baseUrl).collect { event ->
-                        handleSseEvent(event)
+                        withContext(Dispatchers.Main.immediate) {
+                            handleSseEvent(event)
+                        }
                         backoff = 1000L
                     }
                 } catch (_: Exception) {
@@ -101,8 +104,15 @@ class MainViewModel @Inject constructor(
                     repository.getPrivateMessages(target.network, target.nick, after = lastId)
             }
             if (page.messages.isNotEmpty()) {
-                _state.update { it.copy(messages = it.messages + page.messages) }
-                updatePointer(target.key, page.messages.last().id)
+                withContext(Dispatchers.Main.immediate) {
+                    _state.update { state ->
+                        val existing = state.messages.mapTo(mutableSetOf()) { it.id }
+                        val newMessages = page.messages.filter { it.id !in existing }
+                        if (newMessages.isEmpty()) state
+                        else state.copy(messages = state.messages + newMessages)
+                    }
+                    updatePointer(target.key, page.messages.last().id)
+                }
             }
         } catch (_: Exception) { }
     }
@@ -230,14 +240,20 @@ class MainViewModel @Inject constructor(
 
         viewModelScope.launch {
             try {
-                when (target) {
+                val message = when (target) {
                     is ChatTarget.Channel ->
                         repository.sendChannelMessage(target.network, target.name, msgText, msgType)
                     is ChatTarget.Query -> {
-                        repository.sendPrivateMessage(target.network, target.nick, msgText, msgType)
+                        val sent = repository.sendPrivateMessage(
+                            target.network, target.nick, msgText, msgType,
+                        )
                         reloadSidebar()
+                        sent
                     }
                 }
+                appendMessageIfNew(message, target)
+                updatePointer(target.key, message.id)
+                saveSession()
             } catch (e: Exception) {
                 _state.update { it.copy(error = e.message) }
             }
@@ -398,6 +414,14 @@ class MainViewModel @Inject constructor(
         } catch (_: Exception) { }
     }
 
+    private fun appendMessageIfNew(message: Message, target: ChatTarget) {
+        if (_state.value.currentTarget != target) return
+        _state.update { state ->
+            if (state.messages.any { it.id == message.id }) state
+            else state.copy(messages = state.messages + message)
+        }
+    }
+
     private fun handleSseEvent(event: SseEvent) {
         when (event.event) {
             "message" -> {
@@ -412,9 +436,12 @@ class MainViewModel @Inject constructor(
                 )
 
                 if (targetKey == currentKey) {
-                    _state.update { it.copy(messages = it.messages + message) }
-                    updatePointer(targetKey, msg.id)
-                    saveSession()
+                    val currentTarget = _state.value.currentTarget
+                    if (currentTarget != null) {
+                        appendMessageIfNew(message, currentTarget)
+                        updatePointer(targetKey, msg.id)
+                        saveSession()
+                    }
                 } else {
                     _state.update { it.copy(unread = it.unread + targetKey) }
                 }
