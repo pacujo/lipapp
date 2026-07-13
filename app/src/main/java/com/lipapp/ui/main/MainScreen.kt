@@ -90,7 +90,13 @@ fun MainScreen(
                     title = { Text(title, maxLines = 1) },
                     navigationIcon = {
                         IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                            Icon(Icons.Default.Menu, contentDescription = "Menu")
+                            if (state.unread.isNotEmpty()) {
+                                BadgedBox(badge = { Badge() }) {
+                                    Icon(Icons.Default.Menu, contentDescription = "Menu")
+                                }
+                            } else {
+                                Icon(Icons.Default.Menu, contentDescription = "Menu")
+                            }
                         }
                     },
                     actions = {

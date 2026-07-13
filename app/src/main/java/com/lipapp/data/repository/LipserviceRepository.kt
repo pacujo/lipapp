@@ -90,4 +90,7 @@ class LipserviceRepository @Inject constructor(
 
     suspend fun getSession() = api.getSession()
     suspend fun updateSession(session: SessionUpdate) = api.updateSession(session)
+
+    suspend fun pollNotifications(pointers: Map<String, String>) =
+        api.pollNotifications(PollRequest(pointers))
 }

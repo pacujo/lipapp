@@ -91,6 +91,34 @@ data class SessionUpdate(
 )
 
 @Serializable
+data class PollRequest(
+    val pointers: Map<String, String> = emptyMap(),
+)
+
+@Serializable
+data class PollItem(
+    val network: String,
+    val channel: String? = null,
+    val nick: String? = null,
+    val id: String,
+    val time: String,
+    @SerialName("from") val from: String,
+    val type: String,
+    val text: String,
+) {
+    val key: String
+        get() = if (channel != null) "$network/$channel" else "$network/$nick"
+
+    val displayTarget: String
+        get() = channel ?: nick.orEmpty()
+}
+
+@Serializable
+data class PollResponse(
+    val items: List<PollItem>,
+)
+
+@Serializable
 data class MemberResponse(
     val nick: String,
     val prefix: String = "",

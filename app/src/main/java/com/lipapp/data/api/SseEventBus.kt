@@ -14,7 +14,7 @@ class SseEventBus @Inject constructor() {
     val events: SharedFlow<SseEvent> = _events
 
     val currentTarget = AtomicReference<String?>(null)
-    val isInForeground = AtomicBoolean(true)
+    val isInForeground = AtomicBoolean(false)
 
     fun emit(event: SseEvent) {
         _events.tryEmit(event)

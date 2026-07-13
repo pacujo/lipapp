@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lipapp.data.prefs.AppPreferences
 import com.lipapp.data.repository.LipserviceRepository
+import com.lipapp.work.PollWorkScheduler
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -24,6 +25,7 @@ data class LoginUiState(
 class LoginViewModel @Inject constructor(
     private val repository: LipserviceRepository,
     private val prefs: AppPreferences,
+    private val pollWorkScheduler: PollWorkScheduler,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(LoginUiState())
@@ -65,6 +67,7 @@ class LoginViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 repository.login(s.url, s.username, s.password)
+                pollWorkScheduler.schedule()
                 _state.value = _state.value.copy(isLoading = false)
                 onSuccess()
             } catch (e: Exception) {

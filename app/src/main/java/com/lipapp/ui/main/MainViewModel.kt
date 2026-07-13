@@ -7,8 +7,10 @@ import com.lipapp.data.api.SseEventBus
 import com.lipapp.data.api.TokenManager
 import com.lipapp.data.model.*
 import com.lipapp.data.prefs.AppPreferences
+import com.lipapp.data.prefs.PollPointerStore
 import com.lipapp.data.repository.LipserviceRepository
 import com.lipapp.util.NotificationHelper
+import com.lipapp.work.PollWorkScheduler
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -47,6 +49,8 @@ class MainViewModel @Inject constructor(
     private val notificationHelper: NotificationHelper,
     private val sseClient: SseClient,
     private val tokenManager: TokenManager,
+    private val pollPointerStore: PollPointerStore,
+    private val pollWorkScheduler: PollWorkScheduler,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(MainUiState())
@@ -63,6 +67,9 @@ class MainViewModel @Inject constructor(
         }
         loadInitialData()
         startSseConnection()
+        if (repository.isLoggedIn) {
+            pollWorkScheduler.schedule()
+        }
     }
 
     private fun startSseConnection() {
@@ -144,6 +151,7 @@ class MainViewModel @Inject constructor(
                 try {
                     val session = repository.getSession()
                     _state.update { it.copy(pointers = session.pointers.toMutableMap()) }
+                    pollPointerStore.bootstrap(session.pointers)
                     if (session.currentNetwork != null) {
                         if (session.currentChannel != null) {
                             selectTarget(ChatTarget.Channel(session.currentNetwork, session.currentChannel))
@@ -422,6 +430,15 @@ class MainViewModel @Inject constructor(
         }
     }
 
+    private fun maybeShowNotification(msg: MessageEvent, targetKey: String) {
+        if (msg.type == "meta") return
+        val displayTarget = msg.channel ?: msg.nick ?: return
+        if (targetKey == eventBus.currentTarget.get() && eventBus.isInForeground.get()) return
+        notificationHelper.showMessageNotification(
+            msg.network, displayTarget, msg.from, msg.text,
+        )
+    }
+
     private fun handleSseEvent(event: SseEvent) {
         when (event.event) {
             "message" -> {
@@ -444,7 +461,9 @@ class MainViewModel @Inject constructor(
                     }
                 } else {
                     _state.update { it.copy(unread = it.unread + targetKey) }
+                    updatePointer(targetKey, msg.id)
                 }
+                maybeShowNotification(msg, targetKey)
 
                 if (msg.channel == null && msg.nick != null) {
                     val hasQuery = _state.value.sidebar.any { item ->
@@ -487,6 +506,9 @@ class MainViewModel @Inject constructor(
 
     private fun updatePointer(key: String, messageId: String) {
         _state.value.pointers[key] = messageId
+        viewModelScope.launch {
+            pollPointerStore.setPointer(key, messageId)
+        }
     }
 
     private fun saveSession() {

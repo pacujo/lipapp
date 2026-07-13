@@ -119,4 +119,7 @@ interface LipserviceApi {
 
     @PUT("session")
     suspend fun updateSession(@Body session: SessionUpdate): Response<Unit>
+
+    @POST("notifications/poll")
+    suspend fun pollNotifications(@Body request: PollRequest): PollResponse
 }

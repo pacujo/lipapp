@@ -147,7 +147,13 @@ fun Sidebar(
                                     onLongClick = { showMenu = true },
                                 ),
                             icon = {
-                                Icon(Icons.Default.Tag, contentDescription = null, modifier = Modifier.size(16.dp))
+                                if (isUnread) {
+                                    BadgedBox(badge = { Badge() }) {
+                                        Icon(Icons.Default.Tag, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    }
+                                } else {
+                                    Icon(Icons.Default.Tag, contentDescription = null, modifier = Modifier.size(16.dp))
+                                }
                             },
                         )
 
@@ -228,7 +234,13 @@ private fun SidebarQueries(
                             onLongClick = { showMenu = true },
                         ),
                     icon = {
-                        Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(16.dp))
+                        if (isUnread) {
+                            BadgedBox(badge = { Badge() }) {
+                                Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(16.dp))
+                            }
+                        } else {
+                            Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(16.dp))
+                        }
                     },
                 )
 
